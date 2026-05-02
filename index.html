@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard de Onboarding</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --surface2: #f0efe9;
+      --border: rgba(0,0,0,0.08);
+      --border2: rgba(0,0,0,0.14);
+      --text: #1a1a18;
+      --muted: #6b6b67;
+      --hint: #9a9a95;
+      --blue: #185FA5;
+      --blue-bg: #E6F1FB;
+      --green: #3B6D11;
+      --green-bg: #EAF3DE;
+      --coral: #993C1D;
+      --coral-bg: #FAECE7;
+      --purple: #3C3489;
+      --purple-bg: #EEEDFE;
+      --radius: 10px;
+      --radius-sm: 7px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18;
+        --surface: #242422;
+        --surface2: #2e2e2b;
+        --border: rgba(255,255,255,0.08);
+        --border2: rgba(255,255,255,0.14);
+        --text: #f0efe9;
+        --muted: #a0a09a;
+        --hint: #6b6b67;
+        --blue: #85B7EB;
+        --blue-bg: #0C447C;
+        --green: #97C459;
+        --green-bg: #27500A;
+        --coral: #F0997B;
+        --coral-bg: #712B13;
+        --purple: #AFA9EC;
+        --purple-bg: #3C3489;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ---------- layout ---------- */
+    .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 1.75rem;
+    }
+    .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+    .page-title span { font-weight: 400; color: var(--muted); font-size: 16px; margin-left: 8px; }
+
+    .month-nav { display: flex; align-items: center; gap: 8px; }
+    .month-nav button {
+      background: var(--surface); border: 0.5px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 5px 12px; cursor: pointer;
+      color: var(--text); font-size: 13px; transition: background .15s;
+    }
+    .month-nav button:hover { background: var(--surface2); }
+    .month-nav button:disabled { opacity: .35; cursor: default; }
+    .month-label { font-size: 15px; font-weight: 500; min-width: 140px; text-align: center; }
+
+    /* ---------- webhook bar ---------- */
+    .webhook-bar {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius); padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .wh-dot { width: 8px; height: 8px; border-radius: 50%; background: #639922; flex-shrink: 0; }
+    .wh-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .wh-url {
+      font-family: 'SF Mono', 'Fira Mono', monospace; font-size: 11px;
+      background: var(--surface2); border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 3px 10px; cursor: pointer;
+      color: var(--text); white-space: nowrap;
+    }
+    .wh-url:hover { border-color: var(--border2); }
+    .wh-last { font-size: 11px; color: var(--hint); margin-left: auto; white-space: nowrap; }
+    .refresh-btn {
+      margin-left: 4px; background: none; border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 3px 10px; cursor: pointer;
+      color: var(--muted); font-size: 12px;
+    }
+    .refresh-btn:hover { background: var(--surface2); }
+
+    /* ---------- cards ---------- */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+    .card {
+      background: var(--surface2); border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+    .card-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .card-value { font-size: 30px; font-weight: 600; line-height: 1; }
+    .card-sub { font-size: 11px; color: var(--hint); margin-top: 5px; }
+    .c-blue { color: var(--blue); }
+    .c-green { color: var(--green); }
+    .c-coral { color: var(--coral); }
+    .c-purple { color: var(--purple); }
+
+    /* ---------- charts ---------- */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1.5rem; }
+    @media (max-width: 620px) { .charts-row { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem;
+    }
+    .chart-title { font-size: 12px; color: var(--muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: .4px; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    /* ---------- table ---------- */
+    .table-card {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem;
+    }
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+    .table-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-btn {
+      font-size: 11px; padding: 4px 12px; border-radius: 20px;
+      border: 0.5px solid var(--border); background: none;
+      cursor: pointer; color: var(--muted); transition: all .15s;
+    }
+    .filter-btn.active { background: var(--blue-bg); color: var(--blue); border-color: transparent; }
+    .filter-btn:hover:not(.active) { background: var(--surface2); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+    th {
+      text-align: left; font-weight: 500; font-size: 11px; color: var(--muted);
+      padding: 6px 10px; border-bottom: 0.5px solid var(--border);
+      text-transform: uppercase; letter-spacing: .4px;
+    }
+    td { padding: 9px 10px; border-bottom: 0.5px solid var(--border); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    .badge { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+    .badge-agendado { background: var(--blue-bg); color: var(--blue); }
+    .badge-concluido { background: var(--green-bg); color: var(--green); }
+    .badge-cancelado { background: var(--coral-bg); color: var(--coral); }
+
+    .delete-btn {
+      background: none; border: none; cursor: pointer; color: var(--hint);
+      font-size: 14px; padding: 2px 6px; border-radius: 4px;
+      opacity: 0; transition: opacity .15s;
+    }
+    tr:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { color: var(--coral); background: var(--coral-bg); }
+
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--hint); font-size: 13px; }
+    .empty-state strong { display: block; font-size: 15px; margin-bottom: 6px; color: var(--muted); }
+
+    /* ---------- toast ---------- */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--text); color: var(--bg);
+      font-size: 13px; padding: 10px 16px; border-radius: var(--radius-sm);
+      opacity: 0; transform: translateY(8px); transition: all .2s;
+      pointer-events: none; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div class="page-title">Onboarding <span>métricas mensais</span></div>
+    <div class="month-nav">
+      <button id="prev-btn">&#8592;</button>
+      <div class="month-label" id="month-label">—</div>
+      <button id="next-btn">&#8594;</button>
+    </div>
+  </div>
+
+  <div class="webhook-bar">
+    <div class="wh-dot"></div>
+    <div class="wh-label">Endpoint ativo:</div>
+    <div class="wh-url" id="wh-url" title="Clique para copiar">POST /webhook/onboarding</div>
+    <div class="wh-label" style="margin-left:4px;">— envie eventos do CRM aqui</div>
+    <span class="wh-last" id="last-recv"></span>
+    <button class="refresh-btn" id="refresh-btn">↻ Atualizar</button>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="card-label">Agendados</div><div class="card-value c-blue" id="v-sched">—</div><div class="card-sub">este mês</div></div>
+    <div class="card"><div class="card-label">Concluídos</div><div class="card-value c-green" id="v-done">—</div><div class="card-sub" id="s-done">este mês</div></div>
+    <div class="card"><div class="card-label">Cancelados</div><div class="card-value c-coral" id="v-cancel">—</div><div class="card-sub">este mês</div></div>
+    <div class="card"><div class="card-label">Conversão</div><div class="card-value c-purple" id="v-conv">—</div><div class="card-sub">agendado → concluído</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Distribuição — mês atual</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#378ADD"></span>Agendado</span>
+        <span><span class="legend-dot" style="background:#639922"></span>Concluído</span>
+        <span><span class="legend-dot" style="background:#D85A30"></span>Cancelado</span>
+      </div>
+      <div style="position:relative;height:200px;"><canvas id="donutChart" role="img" aria-label="Distribuição de status do mês atual"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Comparativo — últimos 6 meses</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#639922"></span>Concluídos</span>
+        <span><span class="legend-dot" style="background:rgba(55,138,221,.5)"></span>Agendados</span>
+      </div>
+      <div style="position:relative;height:200px;"><canvas id="barChart" role="img" aria-label="Comparativo de onboardings por mês"></canvas></div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">Clientes do mês</div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-f="all">Todos</button>
+        <button class="filter-btn" data-f="agendado">Agendados</button>
+        <button class="filter-btn" data-f="concluido">Concluídos</button>
+        <button class="filter-btn" data-f="cancelado">Cancelados</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%">Cliente</th>
+          <th style="width:18%">Status</th>
+          <th style="width:16%">Data</th>
+          <th style="width:18%">Responsável</th>
+          <th style="width:12%">Recebido</th>
+          <th style="width:6%"></th>
+        </tr>
+      </thead>
+      <tbody id="client-table"></tbody>
+    </table>
+    <div id="empty-state" class="empty-state" style="display:none;">
+      <strong>Nenhum registro</strong>
+      Os dados aparecerão conforme o CRM enviar eventos via webhook.
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const now = new Date();
+let curMonth = now.getMonth();
+let curYear = now.getFullYear();
+let activeFilter = 'all';
+let allEvents = [];
+let donutChart, barChart;
+
+// ---------- toast ----------
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ---------- fetch ----------
+async function loadEvents() {
+  try {
+    const res = await fetch('/api/events');
+    allEvents = await res.json();
+    const last = allEvents.at(-1);
+    if (last) {
+      const t = new Date(last.receivedAt);
+      document.getElementById('last-recv').textContent =
+        'Último: ' + t.toLocaleDateString('pt-BR') + ' ' + t.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    }
+    renderAll();
+  } catch(e) {
+    console.error(e);
+    toast('Erro ao carregar dados do servidor');
+  }
+}
+
+async function deleteEvent(id) {
+  if (!confirm('Remover este registro?')) return;
+  await fetch(`/api/events/${id}`, { method: 'DELETE' });
+  await loadEvents();
+  toast('Registro removido');
+}
+
+// ---------- helpers ----------
+function monthEvents(m, y) {
+  return allEvents.filter(e => e.month === m && e.year === y);
+}
+
+function count(rows, status) {
+  return rows.filter(r => r.status === status).length;
+}
+
+// ---------- render ----------
+function renderCards() {
+  const rows = monthEvents(curMonth, curYear);
+  const sched = count(rows, 'agendado');
+  const done = count(rows, 'concluido');
+  const cancel = count(rows, 'cancelado');
+  const conv = sched > 0 ? Math.round((done / sched) * 100) : null;
+
+  document.getElementById('v-sched').textContent = sched;
+  document.getElementById('v-done').textContent = done;
+  document.getElementById('v-cancel').textContent = cancel;
+  document.getElementById('v-conv').textContent = conv !== null ? conv + '%' : '—';
+
+  const prevM = (curMonth - 1 + 12) % 12;
+  const prevY = curMonth === 0 ? curYear - 1 : curYear;
+  const prevDone = count(monthEvents(prevM, prevY), 'concluido');
+  const diff = done - prevDone;
+  document.getElementById('s-done').textContent =
+    diff > 0 ? `+${diff} vs mês anterior` :
+    diff < 0 ? `${diff} vs mês anterior` : 'igual ao mês anterior';
+}
+
+function renderDonut() {
+  const rows = monthEvents(curMonth, curYear);
+  const data = [count(rows,'agendado'), count(rows,'concluido'), count(rows,'cancelado')];
+
+  if (donutChart) {
+    donutChart.data.datasets[0].data = data;
+    donutChart.update();
+    return;
+  }
+  donutChart = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Agendado','Concluído','Cancelado'],
+      datasets: [{ data, backgroundColor: ['#378ADD','#639922','#D85A30'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
+      }
+    }
+  });
+}
+
+function renderBar() {
+  const labels = [], doneCounts = [], schedCounts = [];
+  for (let i = 5; i >= 0; i--) {
+    const mo = (curMonth - i + 12) % 12;
+    const yr = (curMonth - i < 0) ? curYear - 1 : curYear;
+    const rows = monthEvents(mo, yr);
+    labels.push(SHORT[mo]);
+    doneCounts.push(count(rows, 'concluido'));
+    schedCounts.push(count(rows, 'agendado'));
+  }
+
+  if (barChart) {
+    barChart.data.labels = labels;
+    barChart.data.datasets[0].data = doneCounts;
+    barChart.data.datasets[1].data = schedCounts;
+    barChart.update();
+    return;
+  }
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Concluídos', data: doneCounts, backgroundColor: '#639922', borderRadius: 4 },
+        { label: 'Agendados', data: schedCounts, backgroundColor: 'rgba(55,138,221,0.45)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, autoSkip: false } },
+        y: { grid: { color: 'rgba(128,128,128,0.1)' }, ticks: { font: { size: 11 }, stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderTable() {
+  const rows = monthEvents(curMonth, curYear);
+  const filtered = activeFilter === 'all' ? rows : rows.filter(r => r.status === activeFilter);
+  const tbody = document.getElementById('client-table');
+  const empty = document.getElementById('empty-state');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const sorted = [...filtered].sort((a,b) => new Date(b.receivedAt) - new Date(a.receivedAt));
+  tbody.innerHTML = sorted.map(r => {
+    const recv = new Date(r.receivedAt);
+    const recvStr = recv.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) + ' ' + recv.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+    return `<tr>
+      <td title="${r.name}">${r.name}</td>
+      <td><span class="badge badge-${r.status}">${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</span></td>
+      <td>${r.date}</td>
+      <td>${r.owner}</td>
+      <td style="color:var(--hint);font-size:11px;">${recvStr}</td>
+      <td><button class="delete-btn" onclick="deleteEvent('${r.id}')" title="Remover">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAll() {
+  document.getElementById('month-label').textContent = `${MONTHS[curMonth]} ${curYear}`;
+  const isCurrentMonth = curMonth === now.getMonth() && curYear === now.getFullYear();
+  document.getElementById('next-btn').disabled = isCurrentMonth;
+  renderCards();
+  renderDonut();
+  renderBar();
+  renderTable();
+}
+
+// ---------- events ----------
+document.getElementById('prev-btn').addEventListener('click', () => {
+  curMonth--;
+  if (curMonth < 0) { curMonth = 11; curYear--; }
+  renderAll();
+});
+document.getElementById('next-btn').addEventListener('click', () => {
+  if (document.getElementById('next-btn').disabled) return;
+  curMonth++;
+  if (curMonth > 11) { curMonth = 0; curYear++; }
+  renderAll();
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.f;
+    renderTable();
+  });
+});
+
+document.getElementById('wh-url').addEventListener('click', () => {
+  const url = `${location.origin}/webhook/onboarding`;
+  navigator.clipboard.writeText(url).then(() => toast('URL copiada!')).catch(() => {});
+});
+
+document.getElementById('refresh-btn').addEventListener('click', loadEvents);
+
+// auto-refresh a cada 30s
+setInterval(loadEvents, 30000);
+
+loadEvents();
+</script>
+</body>
+</html>
